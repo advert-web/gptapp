@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Чат с GPT</title>
+    <title>Чат с GPT и сохранением диалога</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.25.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.25.0/prism.min.js"></script>
@@ -335,7 +335,7 @@
         }
 
         // Функция для очистки диалога
-        function clearChat() {           
+        function clearChat() {
             chatBox.innerHTML = '';
             localStorage.removeItem('chat');
             chatHistory = []; // Сбрасываем историю сообщений
@@ -435,23 +435,18 @@
 
         // Функция для показа баннерной рекламы через VK Bridge
         function showAd() {
-    vkBridge.send('VKWebAppShowNativeAds', {
-        ad_format: 'reward' // Тип рекламы
-    })
-    .then((data) => {
-        if (data.result) {
-            // Реклама была показана
-            sendBtn.click();
-            const botResponse = await sendToGPT(userMessage);
-            console.log('Реклама успешно показана');
-        } else {
-            // Ошибка при показе рекламы
-            console.log('Ошибка при показе рекламы');
-        }
-    })
-    .catch((error) => {
-        console.log(error); // Обработка ошибок
-    });
+            vkBridge.send('VKWebAppShowNativeAds', {
+                ad_format: 'reward'
+            })
+            .then((data) => { 
+                if (data.result) { 
+                	sendBtn.click();
+                    // Предзагруженные материалы есть
+                } else {
+                    // Материалов нет
+                }    
+            })
+            .catch((error) => { console.log(error); });
         }
 
         // Обработчик нажатия кнопки "Отправить"
@@ -467,6 +462,9 @@
                 // Показываем анимацию загрузки
                 const loading = showLoading();
 
+                // Отправляем запрос к GPT
+                const botResponse = await sendToGPT(userMessage);
+
                 // Убираем анимацию загрузки и показываем ответ
                 chatBox.removeChild(loading);
                 typeMessage(botResponse, 50); // Эффект печатания
@@ -476,7 +474,8 @@
         // Обработчик нажатия Enter в поле ввода
         userInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
-                showAd();              
+                showAd();
+                
             }
         });
 
