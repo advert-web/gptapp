@@ -335,8 +335,7 @@
         }
 
         // Функция для очистки диалога
-        function clearChat() {
-            showAd();
+        function clearChat() {           
             chatBox.innerHTML = '';
             localStorage.removeItem('chat');
             chatHistory = []; // Сбрасываем историю сообщений
