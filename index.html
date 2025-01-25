@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Чат с GPT и сохранением диалога</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.25.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.25.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.25.0/components/prism-javascript.min.js"></script>
+    <style>
+        /* Общие стили */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f4f8;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: #333;
+        }
+
+        /* Контейнер чата */
+        .chat-container {
+            width: 100%;
+            max-width: 500px;
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 90vh;
+        }
+
+        /* Шапка чата */
+        .chat-header {
+            background-color: #007bff;
+            color: white;
+            padding: 16px;
+            text-align: center;
+            font-size: 18px;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-header i {
+            cursor: pointer;
+            font-size: 20px;
+            margin-left: 10px;
+        }
+
+        /* Окно сообщений */
+        .chat-box {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+            background-color: #f9fafb;
+            border-bottom: 1px solid #e0e4e7;
+        }
+
+        /* Стили для сообщений */
+        .message {
+            margin-bottom: 12px;
+            padding: 10px 14px;
+            border-radius: 8px;
+            max-width: 80%;
+            word-wrap: break-word;
+            position: relative;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeIn 0.5s ease forwards;
+        }
+
+        @keyframes fadeIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .user-message {
+            background-color: #007bff;
+            color: white;
+            align-self: flex-end;
+            margin-left: auto;
+        }
+
+        .bot-message {
+            background-color: #e9ecef;
+            color: #333;
+            align-self: flex-start;
+            margin-right: auto;
+        }
+
+        /* Поле ввода и кнопка */
+        .chat-input {
+            display: flex;
+            padding: 12px;
+            background-color: #ffffff;
+            border-top: 1px solid #e0e4e7;
+        }
+
+        #user-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #e0e4e7;
+            border-radius: 8px;
+            margin-right: 10px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+
+        #user-input:focus {
+            border-color: #007bff;
+        }
+
+        #send-btn {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s ease;
+        }
+
+        #send-btn:hover {
+            background-color: #0056b3;
+        }
+
+        /* Модальное окно */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            width: 300px;
+        }
+
+        .modal h3 {
+            margin-top: 0;
+        }
+
+        .modal select {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 8px;
+            border: 1px solid #e0e4e7;
+        }
+
+        .modal button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .modal button:hover {
+            background-color: #0056b3;
+        }
+
+        /* Анимация загрузки */
+        .loading {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #007bff;
+            animation: bounce 1.4s infinite ease-in-out;
+        }
+
+        .loading:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .loading:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes bounce {
+            0%, 80%, 100% {
+                transform: translateY(0);
+            }
+            40% {
+                transform: translateY(-10px);
+            }
+        }
+
+        /* Эффект печатания */
+        @keyframes typing {
+            from {
+                width: 0;
+            }
+            to {
+                width: 100%;
+            }
+        }
+
+        .typing-effect {
+            display: inline-block;
+            overflow: hidden;
+            white-space: nowrap;
+            animation: typing 2s steps(40, end);
+        }
+
+        /* Реклама */
+        .ad-container {
+            padding: 10px;
+            background-color: #f9fafb;
+            border-top: 1px solid #e0e4e7;
+            text-align: center;
+            font-size: 14px;
+            color: #666;
+        }
+
+        /* Подсветка синтаксиса */
+        pre {
+            background-color: #2d2d2d;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+
+        code {
+            font-family: 'Courier New', Courier, monospace;
+            color: #f8f8f2;
+        }
+
+        .copy-button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 5px;
+            font-size: 12px;
+        }
+
+        .copy-button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <!-- Шапка -->
+        <div class="chat-header">
+            Чат с GPT
+            <div>
+                <i class="fas fa-robot" title="Выбрать версию GPT" onclick="openModal()"></i>
+                <i class="fas fa-trash" title="Очистить диалог" onclick="clearChat()"></i>
+            </div>
+        </div>
+
+        <!-- Окно сообщений -->
+        <div class="chat-box" id="chat-box">
+            <!-- Сообщения будут здесь -->
+        </div>
+
+        <!-- Реклама -->
+        <div class="ad-container" id="ad-container">
+            <!-- Здесь будет баннерная реклама -->
+        </div>
+
+        <!-- Поле ввода и кнопка -->
+        <div class="chat-input">
+            <input type="text" id="user-input" placeholder="Введите ваше сообщение...">
+            <button id="send-btn">Отправить</button>
+        </div>
+    </div>
+
+    <!-- Модальное окно для выбора версии GPT -->
+    <div class="modal" id="modal">
+        <h3>Выберите версию GPT</h3>
+        <select id="gpt-version">
+            <option value="gpt-3.5-turbo">GPT-3.5-turbo (по умолчанию)</option>
+        </select>
+        <button onclick="closeModal()">Сохранить</button>
+    </div>
+
+    <!-- Подключаем VK Bridge -->
+    <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
+
+    <script>
+        const chatBox = document.getElementById('chat-box');
+        const userInput = document.getElementById('user-input');
+        const sendBtn = document.getElementById('send-btn');
+        const adContainer = document.getElementById('ad-container');
+        const modal = document.getElementById('modal');
+        const gptVersionSelect = document.getElementById('gpt-version');
+
+        // Ваш токен для GPT API
+        const apiKey = "sk-8zEttqBAtOjlondn6544C61eAd1c47B6B420Fe9b9fE0Ea10";
+
+        // Инициализация VK Bridge
+        vkBridge.send('VKWebAppInit');
+
+        // Переменная для хранения истории сообщений
+        let chatHistory = [];
+
+        // Переменная для хранения выбранной версии GPT
+        let selectedGPTVersion = "gpt-3.5-turbo";
+
+        // Загрузка диалога из localStorage
+        function loadChat() {
+            const savedChat = localStorage.getItem('chat');
+            if (savedChat) {
+                chatBox.innerHTML = savedChat;
+                chatBox.scrollTop = chatBox.scrollHeight; // Прокрутка вниз
+            }
+        }
+
+        // Сохранение диалога в localStorage
+        function saveChat() {
+            localStorage.setItem('chat', chatBox.innerHTML);
+        }
+
+        // Функция для очистки диалога
+        function clearChat() {
+            chatBox.innerHTML = '';
+            localStorage.removeItem('chat');
+            chatHistory = []; // Сбрасываем историю сообщений
+        }
+
+        // Функция для открытия модального окна
+        function openModal() {
+            modal.style.display = 'block';
+        }
+
+        // Функция для закрытия модального окна
+        function closeModal() {
+            selectedGPTVersion = gptVersionSelect.value;
+            modal.style.display = 'none';
+        }
+
+        // Функция для добавления сообщения в чат
+        function addMessage(text, isUser) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message');
+            messageDiv.classList.add(isUser ? 'user-message' : 'bot-message');
+            messageDiv.textContent = text;
+            chatBox.appendChild(messageDiv);
+            chatBox.scrollTop = chatBox.scrollHeight; // Прокрутка вниз
+            saveChat(); // Сохраняем диалог
+        }
+
+        // Функция для отображения анимации загрузки
+        function showLoading() {
+            const loadingDiv = document.createElement('div');
+            loadingDiv.classList.add('message', 'bot-message');
+            loadingDiv.innerHTML = `
+                <div class="loading"></div>
+                <div class="loading"></div>
+                <div class="loading"></div>
+            `;
+            chatBox.appendChild(loadingDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+            return loadingDiv;
+        }
+
+        // Функция для эффекта печатания
+        function typeMessage(text, delay) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', 'bot-message');
+            chatBox.appendChild(messageDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            let i = 0;
+            const typingInterval = setInterval(() => {
+                if (i < text.length) {
+                    messageDiv.textContent += text.charAt(i);
+                    i++;
+                } else {
+                    clearInterval(typingInterval);
+                }
+            }, delay);
+        }
+
+        // Функция для отправки запроса к GPT
+        async function sendToGPT(message) {
+            const url = "https://api.gpt.ge/v1/chat/completions"; // Эндпоинт для чата
+            const headers = new Headers({
+                "Authorization": `Bearer ${apiKey}`,
+                "Content-Type": "application/json"
+            });
+
+            // Добавляем новое сообщение в историю
+            chatHistory.push({ role: "user", content: message });
+
+            const body = JSON.stringify({
+                model: selectedGPTVersion, // Используем выбранную версию GPT
+                messages: chatHistory // Передаем всю историю сообщений
+            });
+
+            const requestOptions = {
+                method: "POST",
+                headers: headers,
+                body: body,
+                redirect: "follow"
+            };
+
+            try {
+                const response = await fetch(url, requestOptions);
+                const data = await response.json();
+                const botResponse = data.choices[0].message.content;
+
+                // Добавляем ответ бота в историю
+                chatHistory.push({ role: "assistant", content: botResponse });
+
+                return botResponse; // Ответ от GPT
+            } catch (error) {
+                console.error("Ошибка:", error);
+                return "Произошла ошибка при запросе к GPT.";
+            }
+        }
+
+        // Функция для показа баннерной рекламы через VK Bridge
+        function showAd() {
+            vkBridge.send('VKWebAppCheckNativeAds', {
+                ad_format: 'reward'
+            })
+            .then((data) => { 
+                if (data.result) { 
+                    // Предзагруженные материалы есть
+                } else {
+                    // Материалов нет
+                }    
+            })
+            .catch((error) => { console.log(error); });
+        }
+
+        // Обработчик нажатия кнопки "Отправить"
+        sendBtn.addEventListener('click', async () => {
+            const userMessage = userInput.value.trim();
+            if (userMessage) {
+                addMessage(userMessage, true); // Добавляем сообщение пользователя
+                userInput.value = ''; // Очищаем поле ввода
+
+                // Показываем баннерную рекламу
+                showAd();
+
+                // Показываем анимацию загрузки
+                const loading = showLoading();
+
+                // Отправляем запрос к GPT
+                const botResponse = await sendToGPT(userMessage);
+
+                // Убираем анимацию загрузки и показываем ответ
+                chatBox.removeChild(loading);
+                typeMessage(botResponse, 50); // Эффект печатания
+            }
+        });
+
+        // Обработчик нажатия Enter в поле ввода
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                showAd();
+                sendBtn.click();
+            }
+        });
+
+        // Загружаем диалог при запуске
+        loadChat();
+    </script>
+</body>
+</html>
