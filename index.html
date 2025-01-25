@@ -336,6 +336,7 @@
 
         // Функция для очистки диалога
         function clearChat() {
+            showAd();
             chatBox.innerHTML = '';
             localStorage.removeItem('chat');
             chatHistory = []; // Сбрасываем историю сообщений
@@ -343,13 +344,11 @@
 
         // Функция для открытия модального окна
         function openModal() {
-            showAd();
             modal.style.display = 'block';
         }
 
         // Функция для закрытия модального окна
         function closeModal() {
-            showAd();
             selectedGPTVersion = gptVersionSelect.value;
             modal.style.display = 'none';
         }
@@ -443,6 +442,8 @@
     .then((data) => {
         if (data.result) {
             // Реклама была показана
+            sendBtn.click();
+            const botResponse = await sendToGPT(userMessage);
             console.log('Реклама успешно показана');
         } else {
             // Ошибка при показе рекламы
@@ -467,9 +468,6 @@
                 // Показываем анимацию загрузки
                 const loading = showLoading();
 
-                // Отправляем запрос к GPT
-                const botResponse = await sendToGPT(userMessage);
-
                 // Убираем анимацию загрузки и показываем ответ
                 chatBox.removeChild(loading);
                 typeMessage(botResponse, 50); // Эффект печатания
@@ -479,8 +477,7 @@
         // Обработчик нажатия Enter в поле ввода
         userInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
-                showAd();
-                sendBtn.click();
+                showAd();              
             }
         });
 
